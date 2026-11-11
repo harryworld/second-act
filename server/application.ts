@@ -1,3 +1,11 @@
+import {
+  recallItems,
+  recallPassages,
+  saveFromTurn,
+  changeItem,
+  searchHistory,
+  sourceTurn,
+} from "./conversation-memory.ts";
 import { buildPrivateBrief } from "./member-profile.ts";
 import {
   uid,
@@ -136,7 +144,7 @@ export function application(
       economics: economics(v.model),
     };
   }
-  async function agentContext(member: string, vid: string) {
+  async function agentContext(member: string, vid: string, question: string) {
     if (vid) {
       const v = await venture(db, member, vid);
       return {
@@ -165,6 +173,12 @@ export function application(
       .map((p) => ({ ...p, example: false }));
     return {
       scope: "Private founder guide",
+      ...(guide.memoryEnabled
+        ? recallItems(guide.conversationItems, question)
+        : {}),
+      earlierPassages: guide.memoryEnabled
+        ? await recallPassages(db, member, question)
+        : [],
       memberName: p.name || account?.name || "",
       privateMemory: guide.memoryEnabled
         ? guide.memories.map(({ topic, fact }) => ({ topic, fact }))
@@ -217,6 +231,24 @@ export function application(
       if (!parts.length) throw new Problem(404, "Receipt unavailable.");
       return json({ receipt: parts.map((r) => r.content).join("") });
     }
+    if (path === "/api/memory/history" && !write) {
+      const before = url.searchParams.get("before");
+      return json(
+        await searchHistory(
+          db,
+          me,
+          str(url.searchParams.get("q"), 160),
+          before
+            ? number(Number(before), Number.MAX_SAFE_INTEGER, true)
+            : Number.MAX_SAFE_INTEGER,
+          url.searchParams.get("full") === "1",
+        ),
+      );
+    }
+    if (path === "/api/memory/source" && !write)
+      return json(
+        await sourceTurn(db, me, str(url.searchParams.get("id"), 260, true)),
+      );
     if (path === "/api/me/profile" && !write) {
       return json({
         account,
@@ -265,6 +297,38 @@ export function application(
       return json({ posts, meetings, reports, host: host || null });
     }
     if (!write) throw new Problem(404, "Unavailable.");
+    if (path === "/api/memory/save") {
+      await saveFromTurn(db, me, b);
+      return json({ ok: true });
+    }
+    if (path === "/api/memory/change") {
+      await changeItem(
+        db,
+        me,
+        str(b.id, 90, true),
+        str(b.action, 20, true),
+        b.content,
+      );
+      return json({ ok: true });
+    }
+    if (path === "/api/chat/new") {
+      await db.exec("BEGIN");
+      try {
+        await db
+          .prepare(
+            "INSERT INTO founder_chat_boundaries(member,last_row) VALUES(?,(SELECT coalesce(max(rowid),0) FROM messages)) ON CONFLICT(member) DO UPDATE SET last_row=excluded.last_row,revision=revision+1",
+          )
+          .run(me);
+        await db
+          .prepare("DELETE FROM voice_sessions WHERE scope=?")
+          .run("personal:" + me);
+        await db.exec("COMMIT");
+      } catch (e) {
+        await db.exec("ROLLBACK");
+        throw e;
+      }
+      return json({ ok: true });
+    }
     if (path === "/api/profile/brief") {
       return json(
         await buildPrivateBrief(db, me, (source) =>
@@ -700,7 +764,8 @@ export function application(
     } else if (path === "/api/chat" || path === "/api/voice") {
       const vid = str(b.venture, 90);
       const scope = vid ? "venture:" + vid : "personal:" + me;
-      const context = await agentContext(me, vid);
+      const message = path === "/api/chat" ? str(b.message, 4000, true) : "";
+      const context = await agentContext(me, vid, message);
       if (path === "/api/voice") {
         // SDP is a line protocol. Even the last attribute must retain its CRLF.
         str(b.sdp, 80000, true);
@@ -713,12 +778,27 @@ export function application(
           .run(runId, me, scope, Date.now());
         return json({ ...answer, runId });
       }
-      const message = str(b.message, 4000, true);
+
       const result = await aiWork(me, scope, async () => {
+        const revision = vid
+          ? 0
+          : (
+              await db
+                .prepare(
+                  "SELECT revision FROM founder_chat_boundaries WHERE member=?",
+                )
+                .get(me)
+            )?.revision || 0;
         const prior = await history(db, scope);
         const answer = await reply(context, prior, message, signal);
         await db.exec("BEGIN");
         try {
+          if (!vid)
+            await db
+              .prepare(
+                "SELECT json(CASE WHEN coalesce((SELECT revision FROM founder_chat_boundaries WHERE member=?),0)=? THEN 'true' ELSE 'conversation changed' END)",
+              )
+              .run(me, revision);
           await addMessage(db, scope, "user", { text: message });
           await addMessage(db, scope, "assistant", answer);
           await db.exec("COMMIT");
@@ -732,13 +812,25 @@ export function application(
     } else if (path === "/api/voice/captions") {
       await recordVoice(db, me, str(b.runId, 90, true), b.fragments);
     } else if (path === "/api/chat/clear") {
-      await resetInbox(db, me);
-      await db
-        .prepare("DELETE FROM voice_sessions WHERE scope=?")
-        .run("personal:" + me);
-      await db
-        .prepare("DELETE FROM messages WHERE scope=?")
-        .run("personal:" + me);
+      await db.exec("BEGIN");
+      try {
+        await resetInbox(db, me);
+        await db
+          .prepare(
+            "INSERT INTO founder_chat_boundaries(member,last_row) VALUES(?,0) ON CONFLICT(member) DO UPDATE SET last_row=0,revision=revision+1",
+          )
+          .run(me);
+        await db
+          .prepare("DELETE FROM voice_sessions WHERE scope=?")
+          .run("personal:" + me);
+        await db
+          .prepare("DELETE FROM messages WHERE scope=?")
+          .run("personal:" + me);
+        await db.exec("COMMIT");
+      } catch (e) {
+        await db.exec("ROLLBACK");
+        throw e;
+      }
     } else throw new Problem(404, "Unknown action.");
     return json({ ok: true });
   };

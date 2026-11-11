@@ -1,3 +1,4 @@
+import { memoryPanel } from "./conversation-memory.js";
 import { button, esc, field, form, heading, icon, initials } from "./ui.js";
 import { guidePanel } from "./member-guide.js";
 
@@ -91,8 +92,8 @@ export function profilePage(s) {
     heading("Personal workspace", "My profile", "") +
     `<div class="profile-identity"><div class="avatar profile-avatar">${esc(initials(display))}</div><div class="identity-details"><h2>${esc(display)}</h2>${a?.email && display !== a.email ? `<p>${esc(a.email)}</p>` : ""}<span class="meta">${icon("lock-keyhole", 14)} ${s.hosted ? "Signed in with ChatGPT" : "Local development profile"}</span></div>${signOut}</div>
     <div class="profile-layout"><div class="stack"><section id="profile-brief" class="panel profile-brief">${aboutYou(s)}</section>
-    <section class="panel stack"><div class="between"><h2>What your guide knows</h2>${icon("audio-lines", 21)}</div><div id="guide-memories" class="stack">${knowledge(s)}</div></section></div>
+    <section class="panel stack"><div class="between"><h2>What your guide knows</h2>${icon("audio-lines", 21)}</div><div id="guide-memories" class="stack">${knowledge(s)}</div></section><div id="guide-conversation-memory">${memoryPanel(s.guide)}</div></div>
     <aside class="stack profile-aside"><section class="panel stack"><h3>Member profile</h3><p class="fine">${p.listed ? "Your chosen profile fields are listed in People & circles." : "Your member profile is private."}</p>${button("edit-profile", "Edit profile details", "pencil")}</section>
-    ${guidePanel(s)}<section class="panel stack"><h3>Private data</h3>${button("export-data", "Export my workspace", "download")}${button("clear-chat", "Clear private conversation", "trash-2", "quiet")}${s.blocked.length ? "<h3>Blocked members</h3>" + s.blocked.map((p) => button("unblock:" + p.id, "Unblock " + p.name)).join("") : ""}</section></aside></div>`
+    ${guidePanel(s)}<section class="panel stack"><h3>Private data</h3>${button("export-data", "Export my workspace", "download")}${button("clear-chat", "Clear conversation history", "trash-2", "quiet")}${s.blocked.length ? "<h3>Blocked members</h3>" + s.blocked.map((p) => button("unblock:" + p.id, "Unblock " + p.name)).join("") : ""}</section></aside></div>`
   );
 }

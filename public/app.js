@@ -1,3 +1,12 @@
+import {
+  browseMemory,
+  memoryPage,
+  showTurn,
+  promoteTurn,
+  editItem,
+  memoryPanel,
+  rememberTurn,
+} from "./conversation-memory.js";
 import { templates, samples, circles, lessons } from "./catalog.js";
 import {
   esc,
@@ -152,6 +161,7 @@ function chat() {
   const live = currentVoice()?.venture === vid ? currentVoice() : null;
   return `<div class="chat-wrap">${heading(vid ? "Shared venture conversation" : "Private conversation", vid ? "Venture guide" : "Founder guide", vid ? detail.venture.title + " · Visible to venture members." : "Explore an idea at your own pace. Your founder conversation is private.", "")}
  ${!vid && s.guide?.exchanges.some((x) => x.status === "ready") ? button("open-connections", "Review guide connections", "handshake", "link") : ""}
+ ${!vid ? `<div class="row guide-history-tools">${button("memory-browse", "Conversation history", "book-open", "link")}${msgs.length ? button("new-conversation", "New conversation", "plus", "link") : ""}</div>` : ""}
  <div class="chat-list" id="conversation-messages">${!msgs.length && !busy && !live ? `<div id="guide-welcome" class="panel stack"><span class="tile-icon">${icon("audio-lines")}</span><h2>${vid ? "What does the team need next?" : "What do you miss about your work?"}</h2><p>Tell me a little about it, or choose a question to get started.</p><div class="row">${suggestions.map((p, i) => `<button class="secondary" data-act="prompt" data-prompt="${esc(p)}">${esc(p)}</button>`).join("")}</div></div>` : ""}
  ${msgs
    .map((m, i) =>
@@ -167,7 +177,7 @@ function chat() {
            )
            .join(
              "",
-           )}${m.role === "assistant" ? `<div class="row">${m.proposal ? button("proposal:" + i, { experiment: "Review experiment", profile: "Review profile suggestion", note: "Review draft", people: "Explore collaborators", pricing: "Open pricing", task: "Review task" }[m.proposal.type] || "Review suggestion", "pencil") : ""}${button("save-message:" + i, "Save reply", "bookmark", "quiet")}</div>` : ""}${m.voiceRun && msgs[i + 1]?.voiceRun !== m.voiceRun ? button("save-transcript:" + i, "Save transcript as a note", "notebook-pen", "link") : ""}</article>`,
+           )}${m.role === "assistant" ? `<div class="row">${m.proposal ? button("proposal:" + i, { experiment: "Review experiment", profile: "Review profile suggestion", note: "Review draft", people: "Explore collaborators", pricing: "Open pricing", task: "Review task" }[m.proposal.type] || "Review suggestion", "pencil") : ""}${button("save-message:" + i, "Save reply", "bookmark", "quiet")}</div>` : ""}${m.voiceRun && msgs[i + 1]?.voiceRun !== m.voiceRun ? button("save-transcript:" + i, "Save transcript as a note", "notebook-pen", "link") : ""}${!vid ? rememberTurn(m.id) : ""}</article>`,
    )
    .join("")}
  <div id="voice-messages" class="chat-list"></div>
@@ -599,6 +609,40 @@ async function click(id, el) {
         );
       return;
     }
+    case "memory-browse":
+      await browseMemory();
+      return;
+    case "memory-page":
+      await memoryPage(Number(key));
+      return;
+    case "memory-source":
+      await showTurn(el.dataset.source);
+      return;
+    case "memory-from-turn":
+      await promoteTurn(el.dataset.source);
+      return;
+    case "memory-edit": {
+      const item = s.guide.conversationItems.find((x) => x.id === key);
+      if (item) editItem(item);
+      return;
+    }
+    case "memory-forget":
+      await api("memory/change", { id: key, action: "forget" });
+      await update("Memory removed.");
+      return;
+    case "new-conversation":
+      if (pending) {
+        toast("Wait for the current reply to finish.");
+        return;
+      }
+      await endVoice();
+      await api("chat/new", {});
+      drafts.delete("");
+      chatError = "";
+      await update(
+        "New conversation started. Earlier turns are in Conversation history.",
+      );
+      return;
     case "save-message":
       noteForm(
         "Founder guide · " + new Date().toLocaleDateString(),
@@ -894,7 +938,7 @@ async function click(id, el) {
     case "clear-chat":
       authorize(
         "Clear your founder conversation?",
-        "This removes the conversation history your private founder guide uses. Saved notes are separate.",
+        "This deletes all private founder turns, including older conversations. Saved facts, instructions, reference excerpts and notes can be forgotten separately.",
         "Clear conversation",
         "clear-confirm",
       );
@@ -905,6 +949,17 @@ async function click(id, el) {
       await update("Private conversation cleared.");
       return;
     case "export-data": {
+      const founderConversationHistory = [];
+      let before = null;
+      do {
+        const page = await api(
+          "memory/history?full=1" +
+            (before ? "&before=" + encodeURIComponent(before) : ""),
+        );
+        founderConversationHistory.push(...page.turns);
+        before = page.next;
+      } while (before);
+      founderConversationHistory.reverse();
       const ventures = structuredClone(s.ventures);
       for (const v of ventures)
         for (const e of v.entries)
@@ -921,6 +976,7 @@ async function click(id, el) {
         "second-act-workspace.json",
         JSON.stringify(
           {
+            founderConversationHistory,
             account: s.account,
             profile: s.profile,
             messages: s.messages,
@@ -959,6 +1015,17 @@ async function submit(type, f) {
       navigate("venture/" + r.id);
       return;
     }
+    case "search-memory":
+      await browseMemory(String(b.q || ""));
+      return;
+    case "save-turn-memory":
+      await api("memory/save", b);
+      await update("Saved to conversation memory.");
+      return;
+    case "change-turn-memory":
+      await api("memory/change", { ...b, action: "edit" });
+      await update("Memory updated.");
+      return;
     case "guide-settings":
       await api("guide/settings", {
         memory: fd.has("memory"),
@@ -1223,6 +1290,8 @@ setInterval(async () => {
       pairs = $("#guide-connections");
     if (memories) {
       memories.innerHTML = knowledge(s);
+      if ($("#guide-conversation-memory"))
+        $("#guide-conversation-memory").innerHTML = memoryPanel(g);
       $("#profile-brief").innerHTML = aboutYou(s);
       updateBrief();
     }

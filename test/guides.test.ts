@@ -95,16 +95,23 @@ test("background memory accepts sourced member facts, ignores venture conversati
   });
   db.prepare("UPDATE memory_work SET due=0").run();
   const providers = {
-    memory: async (_old, text) => {
-      assert.equal(text.trim(), words);
-      return [
-        {
-          topic: "availability",
-          fact: "Available on Tuesdays",
-          evidence: "on Tuesdays",
-        },
-        { topic: "interests", fact: "Teaching", evidence: "teach on Fridays" },
-      ];
+    memory: async (_old, _topics, turns) => {
+      assert.equal(turns[0].text, words);
+      return {
+        items: [],
+        changes: [
+          {
+            topic: "availability",
+            fact: "Available on Tuesdays",
+            evidence: "on Tuesdays",
+          },
+          {
+            topic: "interests",
+            fact: "Teaching",
+            evidence: "teach on Fridays",
+          },
+        ],
+      };
     },
     discuss: async () => {
       throw Error("unexpected");
@@ -119,7 +126,12 @@ test("background memory accepts sourced member facts, ignores venture conversati
     ...providers,
     memory: async () => {
       await forget(db, "a", "availability");
-      return [{ topic: "availability", fact: "Monday", evidence: "Mondays" }];
+      return {
+        items: [],
+        changes: [
+          { topic: "availability", fact: "Monday", evidence: "Mondays" },
+        ],
+      };
     },
   });
   assert.deepEqual((await guideState(db, "a")).memories, []);
@@ -142,7 +154,7 @@ test("two consenting guides exchange actual messages using only listed profiles,
   await changeSettings(db, "b", true, true);
   let turns = 0;
   const providers = {
-    memory: async () => [],
+    memory: async () => ({ changes: [], items: [] }),
     discuss: async (own, peer, incoming) => {
       turns++;
       assert.equal(

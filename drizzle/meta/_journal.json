@@ -15,6 +15,13 @@
       "when": 1794484800000,
       "tag": "0001_member_brief",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794484800001,
+      "tag": "0002_conversation_memory",
+      "breakpoints": true
     }
   ]
 }

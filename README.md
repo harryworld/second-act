@@ -18,6 +18,12 @@ Use Node.js 24 or later for development. `npm start` opens a loopback entry poin
 6. Use **Pricing** to explore labor, materials, fees, overhead, and break-even volume. **Records** accepts reviewed cash entries, receipt attachments and CSV imports. Estimates and accepted records remain separate. Export CSV for accounting review.
 7. In **Public profile**, the owner approves a versioned export of customer information. Test customer questions against only that package, then use the link to OpenAI’s Business Hub setup. The application records local approval. External verification, claiming, publication and payments are outside this pilot.
 
+## Conversation memory
+
+Your private founder conversation stores both typed and spoken turns. **New conversation** starts a fresh thread and keeps earlier turns searchable in **Conversation history**. You can save a passage from either speaker as a reference or review it as a standing instruction.
+
+When memory is enabled, the guide can extract references from your own words and suggest instructions. In **My profile → Conversation memory**, review an instruction to activate it, inspect its source, edit a memory or forget it. The personal text and voice guides use approved instructions, saved references and eligible earlier passages. Team guides, member-to-member guide discussions and the public customer preview use their own contexts. Earlier turns recorded before conversation indexing are available for manual selection. Clearing founder history deletes the transcripts; selected memory excerpts can be forgotten separately.
+
 ## AI and storage
 
 - [GPT-6.1 Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra) runs at high reasoning effort through Responses for text. The founder guide can consult official sources for US operating questions. Suggestions become changes only through the member’s review controls.

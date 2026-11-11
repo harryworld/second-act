@@ -130,9 +130,14 @@ export async function history(db: DB, scope: string) {
   page: while (true) {
     const rows = await db
       .prepare(
-        "SELECT rowid,id,role,body,created FROM messages WHERE scope=? AND (created,rowid)<(?,?) ORDER BY created DESC,rowid DESC LIMIT 256",
+        "SELECT rowid,id,role,body,created FROM messages WHERE scope=? AND rowid>coalesce((SELECT last_row FROM founder_chat_boundaries WHERE member=?),0) AND (created,rowid)<(?,?) ORDER BY created DESC,rowid DESC LIMIT 256",
       )
-      .all(scope, before, lastRow);
+      .all(
+        scope,
+        scope.startsWith("personal:") ? scope.slice(9) : "",
+        before,
+        lastRow,
+      );
     for (const row of rows) {
       const body = JSON.parse(String(row.body));
       const last = turns.at(-1);

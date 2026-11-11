@@ -1,3 +1,9 @@
+import {
+  memoryItems,
+  groupSources,
+  storeItem,
+  forgetRecall,
+} from "./conversation-memory.ts";
 // A guide's private memory and its public outreach have separate inputs and storage.
 import { type DB, type Profile, profile, Problem, now, uid } from "./store.ts";
 import type { rememberFacts, writeGuideMessage } from "./ai.ts";
@@ -59,6 +65,10 @@ export async function changeSettings(
   await reconcile(db, member);
 }
 export async function forget(db: DB, member: string, topic: string) {
+  const old = await db
+    .prepare("SELECT evidence FROM guide_memories WHERE member=? AND topic=?")
+    .get(member, topic);
+  if (old?.evidence) await forgetRecall(db, member, "", String(old.evidence));
   await resetInbox(db, member);
   await db
     .prepare("DELETE FROM guide_memories WHERE member=? AND topic=?")
@@ -209,6 +219,7 @@ export async function guideState(db: DB, member: string) {
       revision: Number(brief?.revision || 0),
       text: pref.memory ? brief?.brief || null : null,
     },
+    conversationItems: await memoryItems(db, member),
     memoryEnabled: pref.memory,
     outreach: pref.outreach,
     memories: await memories(db, member),
@@ -251,7 +262,7 @@ export async function processMemory(
     pref = await settings(db, me);
   const pendingRows = await db
     .prepare(
-      `SELECT i.seq,m.body,m.created,m.rowid FROM memory_inbox i JOIN messages m ON m.id=i.message WHERE i.member=? ORDER BY i.seq LIMIT 200`,
+      `SELECT i.seq,m.id,m.body,m.created,m.rowid,(SELECT a.id FROM messages a WHERE a.scope=m.scope AND a.role='assistant' AND (a.created,a.rowid)<(m.created,m.rowid) ORDER BY a.created DESC,a.rowid DESC LIMIT 1) AS previous_assistant FROM memory_inbox i JOIN messages m ON m.id=i.message WHERE i.member=? ORDER BY i.seq LIMIT 200`,
     )
     .all(me);
   const rows = [];
@@ -266,30 +277,15 @@ export async function processMemory(
     await resetInbox(db, me);
     return;
   }
-  const source = rows
-    .slice()
-    .sort(
-      (a, b) =>
-        String(a.created).localeCompare(String(b.created)) ||
-        Number(a.rowid) - Number(b.rowid),
-    )
-    .reduce(
-      (state, r) => {
-        const m = JSON.parse(String(r.body));
-        state.text +=
-          (m.voiceRun && state.run === m.voiceRun ? "" : "\n") + m.text;
-        state.run = m.voiceRun;
-        return state;
-      },
-      { text: "", run: null },
-    ).text;
+  const turns = groupSources(rows);
+  const source = turns.map((t) => t.text).join("\n");
   const limit = rows.at(-1)!.seq;
   try {
     await admit(me);
-    const changes = await providers.memory(
+    const { changes, items } = await providers.memory(
       await memories(db, me),
-      source,
       topics,
+      turns,
     );
     if ((await settings(db, me)).generation !== pref.generation) return;
     await db.exec("BEGIN");
@@ -321,6 +317,24 @@ export async function processMemory(
             c.evidence.slice(0, 400),
             now(),
           );
+      }
+      for (const item of items.slice(0, 12)) {
+        const turn = turns[item.turn];
+        if (
+          !turn ||
+          !Number.isInteger(item.turn) ||
+          !["reference", "instruction"].includes(item.kind) ||
+          typeof item.quote !== "string"
+        )
+          continue;
+        const quote = item.quote.trim();
+        if (
+          quote.length < 3 ||
+          quote.length > 1200 ||
+          !turn.text.includes(quote)
+        )
+          continue;
+        await storeItem(db, me, item.kind, turn, quote, quote, false);
       }
       await db
         .prepare("DELETE FROM memory_inbox WHERE member=? AND seq<=?")

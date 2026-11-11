@@ -24,6 +24,12 @@ export function installGuides(db: DatabaseSync) {
       "utf8",
     ),
   );
+  db.exec(
+    readFileSync(
+      new URL("../drizzle/0002_conversation_memory.sql", import.meta.url),
+      "utf8",
+    ),
+  );
 }
 export function startGuides(db: DatabaseSync, admit: (id: string) => void) {
   const providers = { memory: rememberFacts, discuss: writeGuideMessage };
