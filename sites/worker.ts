@@ -1,3 +1,4 @@
+import { chatGPTAccount } from "./account.ts";
 import type { D1Database, ExecutionContext } from "@cloudflare/workers-types";
 import assets from "site:assets";
 import { application } from "../server/application.ts";
@@ -152,7 +153,7 @@ export default {
           { headers },
         );
       }
-      const identity = request.headers.get("oai-authenticated-user-id");
+      const identity = chatGPTAccount(request.headers);
       if (!identity)
         throw new Problem(
           401,
@@ -162,7 +163,7 @@ export default {
         new Uint8Array(
           await crypto.subtle.digest(
             "SHA-256",
-            new TextEncoder().encode(identity),
+            new TextEncoder().encode(identity.id),
           ),
         ),
         (b) => b.toString(16).padStart(2, "0"),
@@ -192,6 +193,7 @@ export default {
         true,
         provider,
         aiWork,
+        identity.details,
       )(member, url, write, data, request.signal);
       if (
         [

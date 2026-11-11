@@ -19,10 +19,13 @@ import { installGuides, startGuides } from "./local-guides.ts";
 const provider = createAI(() => process.env.OPENAI_API_KEY);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const publicDir = resolve(root, "public");
-const db = connect(
-  process.env.SECOND_ACT_DB || resolve(root, ".data/workbench.sqlite"),
-);
-installGuides(db);
+const localPreview = process.env.SECOND_ACT_LOCAL_PREVIEW === "1";
+const db = localPreview
+  ? connect(
+      process.env.SECOND_ACT_DB || resolve(root, ".data/workbench.sqlite"),
+    )
+  : null;
+if (db) installGuides(db);
 const port = Number(process.env.PORT || 4317);
 const hosts = new Set(["127.0.0.1:" + port, "localhost:" + port]);
 const mime = {
@@ -103,6 +106,20 @@ const server = http.createServer(async (req, res) => {
     const host = req.headers.host || "";
     if (!hosts.has(host))
       throw new Problem(403, "Use the local workspace address.");
+    if (!db) {
+      if (req.url?.startsWith("/api/"))
+        return json(
+          res,
+          { error: "Sign in with ChatGPT on the Second Act Site." },
+          401,
+        );
+      res.writeHead(302, {
+        Location: "https://second-act-workbench.harryworld.chatgpt.site/",
+        "Cache-Control": "no-store",
+      });
+      res.end();
+      return;
+    }
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "same-origin");
     res.setHeader(
@@ -232,10 +249,11 @@ const server = http.createServer(async (req, res) => {
       );
   }
 });
-startGuides(db, (member) => {
-  limit("background:" + member, 30, 3600000);
-  limit("ai:server", 150, 3600000);
-});
+if (db)
+  startGuides(db, (member) => {
+    limit("background:" + member, 30, 3600000);
+    limit("ai:server", 150, 3600000);
+  });
 server.listen(port, "127.0.0.1", () =>
   console.log("Second Act is ready at http://127.0.0.1:" + port),
 );

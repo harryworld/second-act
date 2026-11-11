@@ -53,6 +53,7 @@ test("members can review introductions and share a venture without sharing priva
       OPENAI_API_KEY: "",
       PORT: String(port),
       SECOND_ACT_DB: ":memory:",
+      SECOND_ACT_LOCAL_PREVIEW: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

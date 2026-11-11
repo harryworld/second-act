@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { DatabaseSync } from "node:sqlite";
 import { database } from "./local-driver.ts";
 import { rememberFacts, writeGuideMessage } from "./ai.ts";
@@ -17,6 +18,12 @@ export function installGuides(db: DatabaseSync) {
         ON CONFLICT(member) DO UPDATE SET due=excluded.due,attempts=0;
     END;
   `);
+  db.exec(
+    readFileSync(
+      new URL("../drizzle/0001_member_brief.sql", import.meta.url),
+      "utf8",
+    ),
+  );
 }
 export function startGuides(db: DatabaseSync, admit: (id: string) => void) {
   const providers = { memory: rememberFacts, discuss: writeGuideMessage };

@@ -1,3 +1,4 @@
+import { buildPrivateBrief } from "./member-profile.ts";
 import {
   uid,
   now,
@@ -30,6 +31,7 @@ export function application(
   hosted: boolean,
   provider: ReturnType<typeof createAI>,
   aiWork: (me: string, scope: string, fn: () => Promise<any>) => Promise<any>,
+  account: { provider: string; name: string; email: string } | null = null,
 ) {
   const { reply, decide, startVoice, customerPreview } = provider;
   async function circleList() {
@@ -79,6 +81,7 @@ export function application(
     );
     return {
       member,
+      account,
       guide: await guideState(db, member),
       profile: p,
       circles: await circleList(),
@@ -162,6 +165,7 @@ export function application(
       .map((p) => ({ ...p, example: false }));
     return {
       scope: "Private founder guide",
+      memberName: p.name || account?.name || "",
       privateMemory: guide.memoryEnabled
         ? guide.memories.map(({ topic, fact }) => ({ topic, fact }))
         : [],
@@ -213,6 +217,13 @@ export function application(
       if (!parts.length) throw new Problem(404, "Receipt unavailable.");
       return json({ receipt: parts.map((r) => r.content).join("") });
     }
+    if (path === "/api/me/profile" && !write) {
+      return json({
+        account,
+        profile: await profile(db, me),
+        guide: await guideState(db, me),
+      });
+    }
     if (path === "/api/guide" && !write) return json(await guideState(db, me));
     if (path === "/api/workspace" && !write) return json(await workspace(me));
     if (path === "/api/venture" && !write)
@@ -254,6 +265,15 @@ export function application(
       return json({ posts, meetings, reports, host: host || null });
     }
     if (!write) throw new Problem(404, "Unavailable.");
+    if (path === "/api/profile/brief") {
+      return json(
+        await buildPrivateBrief(db, me, (source) =>
+          aiWork(me, "profile-brief:" + me, () =>
+            provider.summarizeMember(source),
+          ),
+        ),
+      );
+    }
     if (path === "/api/guide/settings") {
       if (typeof b.memory !== "boolean" || typeof b.outreach !== "boolean")
         throw new Problem(400, "Choose guide settings.");

@@ -2,6 +2,9 @@
 import { type DB, type Profile, profile, Problem, now, uid } from "./store.ts";
 import type { rememberFacts, writeGuideMessage } from "./ai.ts";
 export const topics = [
+  "preferred name",
+  "location",
+  "role",
   "experience",
   "interests",
   "goal",
@@ -198,7 +201,14 @@ export async function guideState(db: DB, member: string) {
   const work = await db
     .prepare("SELECT attempts FROM memory_work WHERE member=?")
     .get(member);
+  const brief = await db
+    .prepare("SELECT revision,brief FROM profile_briefs WHERE member=?")
+    .get(member);
   return {
+    brief: {
+      revision: Number(brief?.revision || 0),
+      text: pref.memory ? brief?.brief || null : null,
+    },
     memoryEnabled: pref.memory,
     outreach: pref.outreach,
     memories: await memories(db, member),

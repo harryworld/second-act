@@ -8,6 +8,13 @@
       "when": 1794398400000,
       "tag": "0000_second_act",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794484800000,
+      "tag": "0001_member_brief",
+      "breakpoints": true
     }
   ]
 }

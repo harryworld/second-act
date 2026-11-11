@@ -28,7 +28,15 @@ import {
   parseLedger,
   metrics,
 } from "./ventures.js";
-import { guidePanel, memoryList, connections } from "./member-guide.js";
+import { connections } from "./member-guide.js";
+import {
+  profilePage,
+  editProfileForm,
+  knowledge,
+  aboutYou,
+  hasBriefSource,
+  memberName,
+} from "./profile.js";
 import {
   openVoice,
   endVoice,
@@ -60,7 +68,7 @@ let s,
   pending = null,
   chatError = "";
 const drafts = new Map();
-const profileName = () => s.profile.name || "Studio member";
+const profileName = () => memberName(s);
 const routeId = () => route[0] || "home";
 const guideScope = () => (routeId() === "guide" ? route[1] || "" : "");
 const navigate = (hash) => {
@@ -273,17 +281,6 @@ function saved() {
     `<div class="stack">${s.notes.length ? s.notes.map((n) => `<article class="panel stack"><div class="between"><h3>${esc(n.title)}</h3><span class="fine">${new Date(n.created).toLocaleDateString()}</span></div><p class="note-body">${rich(n.body)}</p><div class="row">${button("note-download:" + n.id, "Download", "download", "quiet")}${button("note-delete:" + n.id, "Delete", "trash-2", "quiet")}</div></article>`).join("") : empty("bookmark", "Keep your useful work here", "Save a guide reply, a voice conversation or a note of your own.")}</div>`
   );
 }
-function profilePage(goal) {
-  const p = s.profile;
-  return (
-    heading(
-      "Personal workspace",
-      "My profile",
-      "Decide what your guide knows and what other members can see.",
-    ) +
-    `<div class="split"><section class="panel stack"><h2>Experience & purpose</h2>${form("profile", field("name", "Display name", p.name, { max: 80 }) + field("skills", "Skills you bring", p.skills, { area: true, max: 600 }) + field("goal", "What would you enjoy working on?", goal ?? p.goal, { area: true, max: 800 }) + `<div class="cols">${field("city", "City and state", p.city, { max: 140 })}${field("days", "Preferred working days", p.days, { max: 140 })}</div><label class="tick"><input name="listed" type="checkbox" ${p.listed ? "checked" : ""}> List these profile fields in People & circles</label><p class="fine">Your guide conversations and saved work stay private.</p>`, "Save profile")}</section><div class="stack"><section class="panel stack"><h2>Member account</h2><p>${s.hosted ? "Your workspace is linked to your ChatGPT sign-in." : s.registered ? "Your workspace is linked to a username and passphrase." : "This workspace is saved in this browser. Create a sign-in to reopen it in another browser on this server."}</p><div class="row">${s.hosted ? '<a class="secondary" href="/signout-with-chatgpt" target="_top">Sign out</a>' : s.registered ? button("signout", "Sign out", "log-out") : button("register", "Create sign-in", "lock-keyhole", "primary") + button("signin", "Sign in")}</div></section>${guidePanel(s)}<section class="panel stack"><h3>Private data</h3><p>Your guide uses the profile fields above. Edit or clear them at any time.</p><div class="row">${button("export-data", "Export my workspace", "download")}${button("clear-chat", "Clear private conversation", "trash-2", "quiet")}</div>${s.blocked.length ? "<h3>Blocked members</h3>" + s.blocked.map((p) => button("unblock:" + p.id, "Unblock " + p.name)).join("") : ""}</section></div></div>`
-  );
-}
 async function refresh() {
   s = await api("workspace");
 }
@@ -309,7 +306,12 @@ async function render() {
       if (id !== epoch) return;
       detail = newDetail;
     } else detail = null;
-    if (["people", "profile", "guide"].includes(page)) {
+    if (page === "profile") {
+      const own = await api("me/profile");
+      if (id !== epoch) return;
+      Object.assign(s, own);
+      sidebar(page);
+    } else if (["people", "guide"].includes(page)) {
       const g = await api("guide");
       if (id !== epoch) return;
       s.guide = g;
@@ -322,10 +324,11 @@ async function render() {
       venture: () => venturePage(detail, s.member, route[2] || "plan"),
       learn: library,
       saved,
-      profile: profilePage,
+      profile: () => profilePage(s),
     };
     $("#main").innerHTML = (views[page] || home)();
     if (page === "guide") drawVoice();
+    if (page === "profile") updateBrief();
     if (
       page === "guide" &&
       (pending || chatError || s.messages.length || route[1])
@@ -503,6 +506,13 @@ async function click(id, el) {
   switch (act) {
     case "menu":
       document.body.classList.toggle("nav-open");
+      return;
+    case "edit-profile":
+      modal("Edit profile details", editProfileForm(s));
+      return;
+    case "retry-brief":
+      attemptedBrief = "";
+      updateBrief();
       return;
     case "size":
       document.body.classList.toggle("large");
@@ -911,6 +921,7 @@ async function click(id, el) {
         "second-act-workspace.json",
         JSON.stringify(
           {
+            account: s.account,
             profile: s.profile,
             messages: s.messages,
             guide: s.guide,
@@ -1155,6 +1166,43 @@ window.addEventListener("pagehide", flushOnExit);
 window.addEventListener("hashchange", () => {
   if (s) render();
 });
+let attemptedBrief = "";
+async function updateBrief() {
+  const node = $("#profile-brief");
+  if (
+    !node ||
+    !s.guide.memoryEnabled ||
+    s.guide.memoryStatus === "pending" ||
+    s.guide.brief.text ||
+    !hasBriefSource(s)
+  )
+    return;
+  const member = s.member,
+    revision = s.guide.brief.revision,
+    key = member + ":" + revision;
+  if (attemptedBrief === key) return;
+  attemptedBrief = key;
+  try {
+    const brief = await api("profile/brief", {});
+    if (
+      s.member !== member ||
+      s.guide.brief.revision !== brief.revision ||
+      !s.guide.memoryEnabled
+    )
+      return;
+    if (brief.text) {
+      s.guide.brief = brief;
+      if ($("#profile-brief")) $("#profile-brief").innerHTML = aboutYou(s);
+    }
+  } catch {
+    if (
+      s.member === member &&
+      s.guide.brief.revision === revision &&
+      $("#profile-brief")
+    )
+      $("#profile-brief").innerHTML = aboutYou(s, true);
+  }
+}
 let pollingGuide = false;
 setInterval(async () => {
   if (
@@ -1173,7 +1221,11 @@ setInterval(async () => {
     s.guide = g;
     const memories = $("#guide-memories"),
       pairs = $("#guide-connections");
-    if (memories) memories.innerHTML = memoryList(g);
+    if (memories) {
+      memories.innerHTML = knowledge(s);
+      $("#profile-brief").innerHTML = aboutYou(s);
+      updateBrief();
+    }
     if (pairs) pairs.innerHTML = connections(g);
   } catch {
     /* A later poll can recover without interrupting a form. */
@@ -1189,10 +1241,18 @@ try {
   s = await api("open", {});
   await render();
 } catch (e) {
-  $("#main").innerHTML = empty(
-    "circle-help",
-    "Could not open your workspace",
-    e.message,
-    '<a class="secondary" href="/">Try again</a>',
-  );
+  $("#main").innerHTML =
+    e.status === 401
+      ? empty(
+          "lock-keyhole",
+          "Sign in to Second Act",
+          "Use your ChatGPT account to open your profile.",
+          '<a class="primary" href="/signin-with-chatgpt?return_to=%2F%23profile" target="_top">Continue with ChatGPT</a>',
+        )
+      : empty(
+          "circle-help",
+          "Could not open your workspace",
+          e.message,
+          '<a class="secondary" href="/">Try again</a>',
+        );
 }

@@ -47,9 +47,12 @@ export async function api(path, body, signal) {
           signal,
         },
   );
-  const data = await r.json();
+  const data = await r.json().catch(() => ({}));
   if (!r.ok)
-    throw new Error(data.error || "The request could not be completed.");
+    throw Object.assign(
+      new Error(data.error || "The request could not be completed."),
+      { status: r.status },
+    );
   return data;
 }
 export function toast(msg) {

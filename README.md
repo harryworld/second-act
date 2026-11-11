@@ -2,20 +2,16 @@
 
 Second Act is a local web app for retired and semi-retired professionals who are exploring small businesses. It implements the Next Chapter concept using the Second Act branding from the workspace storyboard. The Portland pilot includes textile, accessories and repair experiments.
 
-## Run
+## Sign in
 
-Use Node.js 24 or later. From this directory, run:
+Open [Second Act](https://second-act-workbench.harryworld.chatgpt.site/) and continue with ChatGPT. **My profile** shows the account information supplied at sign-in, a short private brief, and the facts your guide has learned from your founder conversations. Open “What you said” to see the source of a remembered fact, or forget the detail to remove it and update the brief. Directory sharing is controlled separately.
 
-```sh
-npm start
-```
-
-Open **http://127.0.0.1:4317**. No package installation or build is required. The server reads `OPENAI_API_KEY` from the process environment or the workspace-level `../.env.local`. Replace the project key there when it expires. The local server binds to loopback. Access from a second browser profile on the same machine supports testing collaboration.
+Use Node.js 24 or later for development. `npm start` opens a loopback entry point on port 4317 that directs members to the signed-in Site. To explicitly run the isolated development version with local SQLite accounts, use `npm run dev:local`. Local API access reads the process environment or `../.env.local`.
 
 ## Take a venture through a trial
 
 1. Start in **My workbench**. Ask the founder guide about an idea by typing or speaking. Review suggested profile edits, notes, and experiments before applying them. Live speech requires browser microphone permission. Spoken turns appear inline and are automatically saved in the same conversation. Send a typed follow-up while speaking to switch to text. The next voice session receives recent turns from that guide.
-2. Fill in **My profile**. Directory listing is opt-in. Add a username and passphrase to return to your workspace from another browser. Without sign-in, the browser cookie is the way back to the workspace.
+2. Fill in **My profile**. Directory listing is opt-in. Your ChatGPT sign-in identifies your hosted workspace across visits.
 3. Your guide privately remembers explicit work goals, skills and preferences from your own founder messages in the background. Inspect, forget or pause memory in **My profile → Your personal guide**. Clearing the conversation and forgetting a saved memory are separate controls.
 4. In **People & circles**, search skills, review an introduction or host a working circle. Real requests appear in the recipient’s inbox. Example profiles accept practice drafts only. Members can accept or decline, block other members, and report posts in hosted circles. Hosts can schedule sessions and moderate reported posts. Two listed members who enable guide introductions can open **Guide connections** to see their agents’ proposal and reply. Only listed profile fields enter the discussion. Each member decides whether to send a human introduction. Background work runs while the local server is on and resumes from SQLite.
 5. Create a **venture** from an experiment starter or guide suggestion. Invite collaborators with a single-use code. Review shared tasks and a working agreement. Each participant accepts their own revision. Record evidence, choose a review date, and continue, revise, pause or finish.
