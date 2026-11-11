@@ -1,0 +1,152 @@
+export const templates = [
+  {
+    id: "mending",
+    title: "A neighborhood mending table",
+    category: "Textiles & repair",
+    image: "portland-linen-studio.jpg",
+    alt: "Two makers working with linen in a sewing studio",
+    intro: "Offer a few simple repairs and learn what neighbors need.",
+    question: "Would five neighbors pay for a simple hem or button repair?",
+    steps: [
+      "Choose three repairs you can finish in one sitting",
+      "Ask five neighbors which repair they would pay for",
+      "Run one mending session and record what you learn",
+    ],
+    price: 18,
+    materials: 2,
+    hours: 0.5,
+    wage: 20,
+    fixed: 18,
+    units: 6,
+  },
+  {
+    id: "exchange",
+    title: "A community repair exchange",
+    category: "Community service",
+    image: "repair.webp",
+    alt: "Three collaborators gathered around a repaired lamp",
+    intro: "Bring people with repair skills together for one afternoon.",
+    question:
+      "Will neighbors bring broken items to a two-hour repair exchange?",
+    steps: [
+      "Ask the library about an accessible room",
+      "Agree on repair skills, roles and safety limits",
+      "Host one afternoon and count visits, repairs and supplies",
+    ],
+    price: 12,
+    materials: 2,
+    hours: 0.25,
+    wage: 20,
+    fixed: 20,
+    units: 8,
+  },
+  {
+    id: "accessories",
+    title: "A small-batch accessories studio",
+    category: "Small-batch retail",
+    image: "studio.webp",
+    alt: "A sunlit worktable prepared for a small production run",
+    intro: "Test a made-to-order accessory before buying a full batch.",
+    question:
+      "Will three customers pre-order a handmade accessory at a fair price?",
+    steps: [
+      "Make one sample and time the work",
+      "Show the sample to five potential customers",
+      "Record orders, feedback and actual costs",
+    ],
+    price: 48,
+    materials: 8,
+    hours: 1,
+    wage: 22,
+    fixed: 30,
+    units: 5,
+  },
+];
+export const samples = [
+  {
+    id: "sample-jo",
+    name: "Jo Bennett",
+    skills: "Repair, teaching, demonstrations",
+    city: "Portland, OR",
+    days: "Tuesday, Thursday",
+    goal: "Help neighbors repair everyday items.",
+    initials: "JB",
+  },
+  {
+    id: "sample-luis",
+    name: "Luis Ortega",
+    skills: "Community outreach, events, libraries",
+    city: "Portland, OR",
+    days: "Tuesday, Friday",
+    goal: "Bring practical workshops into neighborhood spaces.",
+    initials: "LO",
+  },
+  {
+    id: "sample-ruth",
+    name: "Ruth Chen",
+    skills: "Sewing, pattern making, alterations",
+    city: "Portland, OR",
+    days: "Monday, Thursday",
+    goal: "Try a small mending studio with a retail partner.",
+    initials: "RC",
+  },
+];
+export const circles = [
+  {
+    id: "makers",
+    name: "Portland Makers Circle",
+    topic: "Textiles & craft",
+    city: "Portland, OR",
+    summary: "Trade techniques for sewing, alterations and small-batch making.",
+    image: "portland-linen-studio.jpg",
+  },
+  {
+    id: "repair",
+    name: "Neighborhood Repair Circle",
+    topic: "Repair & reuse",
+    city: "Portland, OR",
+    summary: "Plan small repair events and share what you learn.",
+    image: "circle.webp",
+  },
+];
+export const lessons = [
+  {
+    id: "pricing",
+    name: "Price your first offer",
+    kind: "Pricing",
+    minutes: 4,
+    description: "Pay for your time as well as your materials.",
+    body: "Start with the cost of one sale. Include materials, fees, and the hours you work multiplied by the pay you want per hour. Subtract that total from the price. What remains contributes to shared costs.",
+    example:
+      "If a repair sells for $18 and uses $2 in supplies and half an hour at $20 per hour, it contributes $6. Three repairs cover $18 of shared costs.",
+    prompt: "Walk me through pricing one item, including my time.",
+  },
+  {
+    id: "trial",
+    name: "Design a one-week trial",
+    kind: "Experiment design",
+    minutes: 3,
+    description: "Learn from a few real customers before investing.",
+    body: "Pick a question you can answer with a small test. Write down a limit on time and spending. Decide what evidence would make you continue, change the idea or stop.",
+    example:
+      "Offer five mending slots in one week. Keep supply spending below $25. Continue if at least three neighbors pay your target price and the work fits your available time.",
+    prompt: "Help me design a one-week customer experiment within my limits.",
+  },
+  {
+    id: "roles",
+    name: "Agree on fair roles",
+    kind: "Collaboration",
+    minutes: 3,
+    description: "Discuss time, pay and ownership before starting.",
+    body: "Ask each person which work they want to own and how much time they can offer. Write down the spending limit, compensation, ownership of designs and a way to leave the project. Invite everyone to review the agreement.",
+    example:
+      "One partner sews and another arranges bookings. Each accepts their own hours and pay before customers are promised a delivery date.",
+    prompt: "Help me draft a fair working agreement for a small team.",
+  },
+];
+export const choices = {
+  test: "Ready for a small test",
+  clarify: "Clarify the offer",
+  costs: "Review the costs",
+  capacity: "Reduce the workload",
+};

@@ -1,0 +1,18 @@
+{
+  "name": "second-act-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=../.env.local server/main.ts",
+    "test": "node --test test/*.test.ts",
+    "build": "node scripts/build-site.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261110.1",
+    "esbuild": "0.27.3"
+  }
+}
