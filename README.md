@@ -1,6 +1,8 @@
 # Second Act
 
-Second Act is a local web app for retired and semi-retired professionals who are exploring small businesses. It implements the Next Chapter concept using the Second Act branding from the workspace storyboard. The Portland pilot includes textile, accessories and repair experiments.
+**Live web app:** [https://second-act-workbench.harryworld.chatgpt.site/](https://second-act-workbench.harryworld.chatgpt.site/)
+
+Second Act helps retired and semi-retired professionals find collaborators and test small business ideas with a personal founder guide. The Portland pilot includes textile, accessories and repair experiments.
 
 ## Sign in
 
