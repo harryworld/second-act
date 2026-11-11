@@ -1,3 +1,4 @@
+import { ownShares } from "./shared-experiences.ts";
 import {
   memoryItems,
   groupSources,
@@ -219,6 +220,7 @@ export async function guideState(db: DB, member: string) {
       revision: Number(brief?.revision || 0),
       text: pref.memory ? brief?.brief || null : null,
     },
+    sharedExperiences: await ownShares(db, member),
     conversationItems: await memoryItems(db, member),
     memoryEnabled: pref.memory,
     outreach: pref.outreach,

@@ -1,3 +1,4 @@
+import { shareActions } from "./peer-memory.js";
 import { memoryPanel } from "./conversation-memory.js";
 import { button, esc, field, form, heading, icon, initials } from "./ui.js";
 import { guidePanel } from "./member-guide.js";
@@ -75,7 +76,7 @@ export function knowledge(s) {
     Boolean(s.profile[key]),
   );
   return `${added.length ? `<div class="knowledge-group"><h3>Details you added</h3><dl class="profile-fields">${added.map(([key, label]) => `<div><dt>${label}</dt><dd>${esc(s.profile[key])}</dd></div>`).join("")}</dl></div>` : ""}
-  <div class="knowledge-group"><h3>From your conversations</h3>${g.memories.length ? g.memories.map((m) => `<article class="memory-item"><div class="between"><strong>${esc(m.topic)}</strong>${button("forget-memory:" + m.topic, "Forget", "", "link")}</div><p>${esc(m.fact)}</p><details><summary>What you said</summary><blockquote>${esc(m.evidence)}</blockquote></details></article>`).join("") : '<p class="muted">No conversation details saved yet.</p>'}</div>
+  <div class="knowledge-group"><h3>From your conversations</h3>${g.memories.length ? g.memories.map((m) => `<article class="memory-item"><div class="between"><strong>${esc(m.topic)}</strong>${button("forget-memory:" + m.topic, "Forget", "", "link")}</div><p>${esc(m.fact)}</p><details><summary>What you said</summary><blockquote>${esc(m.evidence)}</blockquote></details>${shareActions(g, "fact", m.topic)}</article>`).join("") : '<p class="muted">No conversation details saved yet.</p>'}</div>
   ${!g.memoryEnabled ? '<p class="fine">Memory is paused. Your guide leaves saved memories out of replies.</p>' : g.memoryStatus === "pending" ? '<p class="fine" role="status">Updating your profile from your conversation…</p>' : g.memoryStatus === "failed" ? button("retry-guides", "Retry memory update") : ""}`;
 }
 export function profilePage(s) {

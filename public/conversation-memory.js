@@ -1,3 +1,4 @@
+import { shareActions } from "./peer-memory.js";
 import { api, button, esc, field, form, modal, icon } from "./ui.js";
 
 const speaker = (role) => (role === "assistant" ? "Guide" : "You");
@@ -22,7 +23,7 @@ export function memoryPanel(guide) {
  ]
    .map(([kind, title]) => {
      const list = items.filter((x) => x.kind === kind);
-     return `<div class="knowledge-group"><h3>${title}</h3>${list.length ? list.map((x) => `<article class="memory-item"><p>${esc(x.content)}</p>${x.state === "suggested" ? '<span class="tag">Suggested · review before use</span>' : ""}<details><summary>Source · ${speaker(x.source_role)} · ${esc(stamp(x.source_date))}</summary><blockquote>${esc(x.quote)}</blockquote>${sourceAction("memory-source", x.source_id, "View conversation turn")}</details><div class="row">${button("memory-edit:" + x.id, x.state === "suggested" ? "Review instruction" : "Edit", "", "link")}${button("memory-forget:" + x.id, x.state === "suggested" ? "Dismiss" : "Forget", "", "link")}</div></article>`).join("") : `<p class="fine">${kind === "instruction" ? "Your guide can suggest standing instructions when you describe how you want it to help." : "Named resources and decisions you share can appear here with their original wording."}</p>`}</div>`;
+     return `<div class="knowledge-group"><h3>${title}</h3>${list.length ? list.map((x) => `<article class="memory-item"><p>${esc(x.content)}</p>${x.state === "suggested" ? '<span class="tag">Suggested · review before use</span>' : ""}<details><summary>Source · ${speaker(x.source_role)} · ${esc(stamp(x.source_date))}</summary><blockquote>${esc(x.quote)}</blockquote>${sourceAction("memory-source", x.source_id, "View conversation turn")}</details><div class="row">${button("memory-edit:" + x.id, x.state === "suggested" ? "Review instruction" : "Edit", "", "link")}${button("memory-forget:" + x.id, x.state === "suggested" ? "Dismiss" : "Forget", "", "link")}</div>${x.kind === "reference" && x.state === "active" && x.source_role === "user" ? shareActions(guide, "reference", x.id) : ""}</article>`).join("") : `<p class="fine">${kind === "instruction" ? "Your guide can suggest standing instructions when you describe how you want it to help." : "Named resources and decisions you share can appear here with their original wording."}</p>`}</div>`;
    })
    .join("")}</section>`;
 }

@@ -1,3 +1,4 @@
+import { peerLookup } from "./voice-peer.js";
 import { api } from "./ui.js";
 
 let call = null;
@@ -84,6 +85,7 @@ async function commit(s) {
 function finish(s, message) {
   if (s.closed) return;
   s.closed = true;
+  s.peer?.close();
   s.result = message;
   clearTimeout(s.deadline);
   clearTimeout(s.timer);
@@ -144,6 +146,7 @@ export async function openVoice(venture = "") {
     abort: new AbortController(),
     queue: [],
     fragments: [],
+    peerSources: [],
     seen: new Set(),
     ready: false,
     closed: false,
@@ -152,6 +155,7 @@ export async function openVoice(venture = "") {
   };
   s.closedPromise = new Promise((resolve) => (s.resolveClosed = resolve));
   call = s;
+  if (!venture) s.peer = peerLookup(s, notify);
   notify();
   try {
     if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection)
@@ -181,6 +185,13 @@ export async function openVoice(venture = "") {
       try {
         event = JSON.parse(data);
       } catch {
+        return;
+      }
+      if (
+        event.type === "session.delegation.created" &&
+        event.delegation?.target === "client"
+      ) {
+        s.peer?.delegation(event.delegation.id).catch(() => {});
         return;
       }
       if (event.type === "session.started") {
@@ -217,6 +228,7 @@ export async function openVoice(venture = "") {
         end: event.end_ms ?? start,
       };
       s.fragments.push(f);
+      if (role === "user") s.peer?.input();
       s.queue.push(f);
       scheduleSave(s);
       notify();

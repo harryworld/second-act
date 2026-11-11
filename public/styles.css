@@ -864,6 +864,30 @@ dialog::backdrop {
   display: block;
   margin-top: 8px;
 }
+.guide-markdown {
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+.guide-markdown > * {
+  margin-block: 0;
+}
+.guide-markdown > * + * {
+  margin-block-start: .65em;
+}
+.guide-markdown :is(h2, h3, h4, h5, h6) {
+  font-size: 1.2em;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.guide-markdown :is(ol, ul) {
+  padding-inline-start: 1.65em;
+}
+.guide-markdown pre {
+  background: var(--paper);
+  border-radius: 6px;
+  padding: .75em;
+  white-space: pre-wrap;
+}
 .chat-compose {
   position: sticky;
   bottom: 0;
@@ -1373,5 +1397,94 @@ dialog::backdrop {
   }
   .identity-details h2 {
     font-size: 1.7em;
+  }
+}
+.public-visitor #shell {
+  display: block;
+}
+.public-visitor #sidebar {
+  display: none;
+}
+.public-visitor #bar {
+  max-width: 1280px;
+  margin: auto;
+  height: 79px;
+}
+.public-visitor .content main {
+  max-width: 1280px;
+  padding-top: 32px;
+}
+.visitor-hero .hero-copy {
+  padding: clamp(28px, 4vw, 60px);
+}
+.visitor-hero h1 {
+  font-size: clamp(3.2rem, 5.6vw, 5rem);
+  margin: 20px 0 16px;
+  line-height: 0.98;
+}
+.visitor-actions {
+  margin-top: 24px;
+}
+.visitor-actions .primary {
+  background: #e4edda;
+  border-color: #e4edda;
+  color: #23452c;
+}
+.visitor-actions .quiet {
+  color: #fbfff3;
+  border-color: #9caf94;
+}
+.visitor-hero .hero-photo {
+  min-height: 360px;
+}
+.sign-in-panel {
+  max-width: 640px;
+  margin: 36px auto;
+}
+.peer-evidence {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 10px;
+  font-size: 0.9em;
+}
+.peer-evidence summary {
+  cursor: pointer;
+  color: var(--green);
+  font-weight: 650;
+}
+.peer-evidence > div {
+  margin: 9px 0;
+}
+.peer-evidence blockquote {
+  margin: 4px 0;
+  border-left: 2px solid var(--line);
+  padding-left: 10px;
+}
+.peer-evidence small {
+  color: var(--muted);
+}
+@media (max-width: 590px) {
+  .public-library {
+    display: none;
+  }
+  .public-visitor #bar {
+    height: 64px;
+  }
+  .public-visitor .content main {
+    padding-top: 16px;
+  }
+  .visitor-hero .hero-photo {
+    height: 170px;
+    min-height: 0;
+  }
+  .visitor-hero h1 {
+    font-size: 2.9rem;
+  }
+  .visitor-hero .hero-copy {
+    padding: 22px;
+  }
+  .visitor-actions {
+    gap: 8px;
+    margin-top: 16px;
   }
 }

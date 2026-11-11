@@ -45,7 +45,7 @@ export function recallItems(items: any[], question: string) {
 function transcriptQuery(memoryOnly = false) {
   return `WITH raw AS (
  SELECT rowid AS seq,id,role,created,json_extract(body,'$.text') AS text,json_extract(body,'$.voiceRun') AS run,
- ${memoryOnly ? "EXISTS(SELECT 1 FROM guide_recall_sources WHERE message=messages.id)" : "1"} AS eligible
+ ${memoryOnly ? "EXISTS(SELECT 1 FROM guide_recall_sources WHERE message=messages.id) AND (role<>'assistant' OR (coalesce(json_array_length(body,'$.peerSourceIds'),0)=0 AND NOT EXISTS(SELECT 1 FROM voice_experience_lookups vl WHERE vl.run=json_extract(messages.body,'$.voiceRun'))))" : "1"} AS eligible
  FROM messages WHERE scope=?
 ), marked AS (
  SELECT *,CASE WHEN run IS NOT NULL AND lag(run) OVER timeline=run AND lag(role) OVER timeline=role THEN 0 ELSE 1 END AS boundary

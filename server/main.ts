@@ -128,6 +128,8 @@ const server = http.createServer(async (req, res) => {
     );
     const url = new URL(req.url || "/", "http://" + host);
     const path = url.pathname;
+    if (path === "/api/session" && req.method === "GET")
+      return json(res, { signedIn: true });
     if (!path.startsWith("/api/")) {
       if (req.method !== "GET" && req.method !== "HEAD")
         throw new Problem(405, "Method not allowed.");

@@ -4,7 +4,7 @@ Second Act is a local web app for retired and semi-retired professionals who are
 
 ## Sign in
 
-Open [Second Act](https://second-act-workbench.harryworld.chatgpt.site/) and continue with ChatGPT. **My profile** shows the account information supplied at sign-in, a short private brief, and the facts your guide has learned from your founder conversations. Open “What you said” to see the source of a remembered fact, or forget the detail to remove it and update the brief. Directory sharing is controlled separately.
+Open [Second Act](https://second-act-workbench.harryworld.chatgpt.site/) to explore the studio home, experiment starters and learning library without signing in. Continue with ChatGPT to use a guide or open a member workspace. **My profile** shows the account information supplied at sign-in, a short private brief, and the facts your guide has learned from your founder conversations. Open “What you said” to see the source of a remembered fact, or forget the detail to remove it and update the brief. Directory sharing is controlled separately.
 
 Use Node.js 24 or later for development. `npm start` opens a loopback entry point on port 4317 that directs members to the signed-in Site. To explicitly run the isolated development version with local SQLite accounts, use `npm run dev:local`. Local API access reads the process environment or `../.env.local`.
 
@@ -23,6 +23,8 @@ Use Node.js 24 or later for development. `npm start` opens a loopback entry poin
 Your private founder conversation stores both typed and spoken turns. **New conversation** starts a fresh thread and keeps earlier turns searchable in **Conversation history**. You can save a passage from either speaker as a reference or review it as a standing instruction.
 
 When memory is enabled, the guide can extract references from your own words and suggest instructions. In **My profile → Conversation memory**, review an instruction to activate it, inspect its source, edit a memory or forget it. The personal text and voice guides use approved instructions, saved references and eligible earlier passages. Team guides, member-to-member guide discussions and the public customer preview use their own contexts. Earlier turns recorded before conversation indexing are available for manual selection. Clearing founder history deletes the transcripts; selected memory excerpts can be forgotten separately.
+
+Members can use **Share an experience** on a profile fact or member-authored reference. The owner reviews the exact topic and excerpt that other signed-in founder guides may consult. The lookup excludes the requesting member and blocked relationships, and returns only matching shared excerpts and dates. Text replies identify which excerpts were used. The live voice guide looks up shared experiences as the spoken topic changes and identifies evidence consulted during the call. Editing or forgetting the source invalidates its shared copy. Withdrawal stops subsequent lookups; previously delivered replies may still contain a paraphrase.
 
 ## AI and storage
 

@@ -1,4 +1,12 @@
 import {
+  shareExperience,
+  withdrawExperience,
+  findExperiences,
+  founderMessages,
+  voiceExperiences,
+  requireExperiences,
+} from "./shared-experiences.ts";
+import {
   recallItems,
   recallPassages,
   saveFromTurn,
@@ -111,7 +119,7 @@ export function application(
       ventures,
       people,
       intros,
-      messages: await history(db, "personal:" + member),
+      messages: await founderMessages(db, member),
       notes: await db
         .prepare("SELECT * FROM notes WHERE member=? ORDER BY rowid DESC")
         .all(member),
@@ -297,6 +305,24 @@ export function application(
       return json({ posts, meetings, reports, host: host || null });
     }
     if (!write) throw new Problem(404, "Unavailable.");
+    if (path === "/api/memory/share") {
+      await shareExperience(db, me, b);
+      return json({ ok: true });
+    }
+    if (path === "/api/memory/withdraw") {
+      await withdrawExperience(db, me, str(b.id, 100, true));
+      return json({ ok: true });
+    }
+    if (path === "/api/voice/peer-experiences") {
+      return json({
+        items: await voiceExperiences(
+          db,
+          me,
+          str(b.runId, 90, true),
+          str(b.query, 800, true),
+        ),
+      });
+    }
     if (path === "/api/memory/save") {
       await saveFromTurn(db, me, b);
       return json({ ok: true });
@@ -770,7 +796,14 @@ export function application(
         // SDP is a line protocol. Even the last attribute must retain its CRLF.
         str(b.sdp, 80000, true);
         const answer = await aiWork(me, "voice:" + me, async () =>
-          startVoice(context, b.sdp, await history(db, scope), signal),
+          startVoice(
+            context,
+            b.sdp,
+            vid
+              ? await history(db, scope)
+              : await founderMessages(db, me, true),
+            signal,
+          ),
         );
         const runId = uid();
         await db
@@ -789,8 +822,35 @@ export function application(
                 )
                 .get(me)
             )?.revision || 0;
-        const prior = await history(db, scope);
-        const answer = await reply(context, prior, message, signal);
+        const prior = vid
+          ? await history(db, scope)
+          : await founderMessages(db, me, true);
+        const previous =
+          prior.filter((t) => t.role === "user").at(-1)?.text || "";
+        const shared = vid
+          ? []
+          : await findExperiences(
+              db,
+              me,
+              message,
+              previous + " " + (context.profile?.goal || ""),
+            );
+        const suggestions = shared.map((s, i) => ({
+          key: "S" + (i + 1),
+          topic: s.title,
+          excerpt: s.excerpt,
+          date: s.updated.slice(0, 10),
+        }));
+        const raw = await reply(
+          { ...context, communityExperiences: suggestions },
+          prior,
+          message,
+          signal,
+        );
+        const used = new Set(raw.usedExperiences || []);
+        const peerSources = shared.filter((_, i) => used.has("S" + (i + 1)));
+        const { usedExperiences, ...body } = raw;
+        const answer = { ...body, peerSourceIds: peerSources.map((s) => s.id) };
         await db.exec("BEGIN");
         try {
           if (!vid)
@@ -799,6 +859,11 @@ export function application(
                 "SELECT json(CASE WHEN coalesce((SELECT revision FROM founder_chat_boundaries WHERE member=?),0)=? THEN 'true' ELSE 'conversation changed' END)",
               )
               .run(me, revision);
+          await requireExperiences(
+            db,
+            me,
+            shared.map((s) => s.id),
+          );
           await addMessage(db, scope, "user", { text: message });
           await addMessage(db, scope, "assistant", answer);
           await db.exec("COMMIT");
@@ -806,7 +871,7 @@ export function application(
           await db.exec("ROLLBACK");
           throw e;
         }
-        return answer;
+        return { ...answer, peerSources };
       });
       return json(result);
     } else if (path === "/api/voice/captions") {
@@ -815,6 +880,9 @@ export function application(
       await db.exec("BEGIN");
       try {
         await resetInbox(db, me);
+        await db
+          .prepare("DELETE FROM voice_experience_lookups WHERE member=?")
+          .run(me);
         await db
           .prepare(
             "INSERT INTO founder_chat_boundaries(member,last_row) VALUES(?,0) ON CONFLICT(member) DO UPDATE SET last_row=0,revision=revision+1",

@@ -1,4 +1,13 @@
 import {
+  publicBar,
+  publicHome,
+  privateGate,
+  previewStarter,
+  signInLink,
+} from "./visitor.js";
+import { reviewShare, peerSources } from "./peer-memory.js";
+import { conversationMessageBody } from "./conversation-markdown.js";
+import {
   browseMemory,
   memoryPage,
   showTurn,
@@ -167,7 +176,7 @@ function chat() {
    .map((m, i) =>
      live?.id && live.id === m.voiceRun
        ? ""
-       : `<article class="chat-message ${m.role === "assistant" ? "assistant" : "user"}"><strong class="legend">${m.role === "assistant" ? "Second Act guide" : vid ? "Team member" : "You"}${m.voiceRun ? " · Voice" : ""}</strong><p class="chat-text">${rich(m.text)}</p>${(
+       : `<article class="chat-message ${m.role === "assistant" ? "assistant" : "user"}"><strong class="legend">${m.role === "assistant" ? "Second Act guide" : vid ? "Team member" : "You"}${m.voiceRun ? " · Voice" : ""}</strong>${conversationMessageBody(m)}${peerSources(m.peerSources, !!m.voiceRun)}${(
            m.sources || []
          )
            .filter((x) => x.url.startsWith("https://"))
@@ -307,6 +316,29 @@ async function render() {
     if (dlg().open) dlg().close();
     window.scrollTo(0, 0);
   }
+  document.body.classList.toggle("public-visitor", Boolean(s.visitor));
+  if (s.visitor) {
+    $("#sidebar").innerHTML = "";
+    $("#bar").innerHTML = publicBar();
+    const title = nav.find((x) => x[0] === page)?.[1] || "Your workspace";
+    document.title =
+      "Second Act · " + (page === "home" ? "Founder studio" : title);
+    $("#main").innerHTML =
+      page === "home" || page === "starter"
+        ? publicHome()
+        : page === "learn"
+          ? library()
+          : privateGate(route.join("/"), title);
+    if (page === "starter") previewStarter(route[1]);
+    return;
+  }
+  if (page === "starter") {
+    const starter = templates.find((t) => t.id === route[1]);
+    window.history.replaceState(null, "", "#ventures");
+    await render();
+    if (starter) openTemplate(starter.id);
+    return;
+  }
   sidebar(page);
   try {
     if (page === "venture" || (page === "guide" && route[1])) {
@@ -425,6 +457,8 @@ function drawVoice() {
           `<article class="chat-message ${m.role}"><strong class="legend">${m.role === "assistant" ? "Second Act guide" : "You"} · Voice</strong><p class="chat-text">${esc(m.text)}</p></article>`,
       )
       .join("");
+    if (v.peerSources?.length)
+      target.insertAdjacentHTML("beforeend", peerSources(v.peerSources, true));
     if (follow && lines.length)
       $(".chat-compose")?.scrollIntoView({ block: "nearest" });
   }
@@ -442,12 +476,15 @@ voiceEvents.addEventListener("finished", ({ detail: v }) => {
     : detail?.venture.id === v.venture
       ? detail.messages
       : null;
+  const spoken = voiceTurns(v);
+  const lastGuide = spoken.findLast((m) => m.role === "assistant");
+  if (lastGuide && v.peerSources?.length) lastGuide.peerSources = v.peerSources;
   if (messages)
     messages.splice(
       0,
       messages.length,
       ...messages.filter((m) => !v.id || m.voiceRun !== v.id),
-      ...voiceTurns(v),
+      ...spoken,
     );
   if (routeId() === "guide" && guideScope() === v.venture) {
     const focused = document.activeElement?.id === "message";
@@ -609,6 +646,20 @@ async function click(id, el) {
         );
       return;
     }
+    case "peer-share-fact":
+    case "peer-share-reference":
+      reviewShare(
+        s.guide,
+        act.slice("peer-share-".length),
+        decodeURIComponent(key),
+      );
+      return;
+    case "peer-withdraw":
+      await api("memory/withdraw", { id: key });
+      await update(
+        "Sharing stopped. Other guides can no longer look up that excerpt.",
+      );
+      return;
     case "memory-browse":
       await browseMemory();
       return;
@@ -649,7 +700,14 @@ async function click(id, el) {
         guideMsgs()[Number(key)].text,
       );
       return;
+    case "public-explore":
+      $("#public-ideas")?.scrollIntoView({ block: "start" });
+      return;
     case "template":
+      if (s.visitor) {
+        previewStarter(key);
+        return;
+      }
       openTemplate(key);
       return;
     case "open-connections":
@@ -804,6 +862,10 @@ async function click(id, el) {
       return;
     }
     case "lesson-guide": {
+      if (s.visitor) {
+        window.location.assign(signInLink("guide"));
+        return;
+      }
       dlg().close();
       await sendChat(lessons.find((x) => x.id === key).prompt);
       return;
@@ -1017,6 +1079,10 @@ async function submit(type, f) {
     }
     case "search-memory":
       await browseMemory(String(b.q || ""));
+      return;
+    case "peer-share":
+      await api("memory/share", b);
+      await update("Shared with other members’ founder guides.");
       return;
     case "save-turn-memory":
       await api("memory/save", b);
@@ -1307,7 +1373,8 @@ document.body.classList.toggle(
   localStorage.getItem("sa-large") === "1",
 );
 try {
-  s = await api("open", {});
+  const session = await api("session");
+  s = session.signedIn ? await api("open", {}) : { visitor: true };
   await render();
 } catch (e) {
   $("#main").innerHTML =

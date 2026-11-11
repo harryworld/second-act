@@ -154,6 +154,8 @@ export default {
         );
       }
       const identity = chatGPTAccount(request.headers);
+      if (url.pathname === "/api/session" && request.method === "GET")
+        return json({ signedIn: !!identity });
       if (!identity)
         throw new Problem(
           401,
