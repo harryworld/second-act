@@ -28,7 +28,29 @@ function flush(s) {
   const write = async () => {
     while (s.queue.length) {
       const fragments = nextBatch(s);
-      await api("voice/captions", { runId: s.id, fragments });
+      const result = await api(
+        s.story ? "story/voice/captions" : "voice/captions",
+        { runId: s.id, fragments },
+      );
+      if (
+        s.story &&
+        result.mentorReady &&
+        !s.mentorOffered &&
+        s.channel?.readyState === "open" &&
+        !s.ending
+      ) {
+        s.mentorOffered = true;
+        voiceEvents.dispatchEvent(new Event("story-introduction"));
+        s.channel.send(
+          JSON.stringify({
+            type: "session.commentary.append",
+            event_id: crypto.randomUUID(),
+            delegation_id: null,
+            content:
+              "Suggest Sophie meet Harry, the flower-shop owner, to compare her first inventory test and cash plan. She can review a practice introduction in the story.",
+          }),
+        );
+      }
       s.queue.splice(0, fragments.length);
     }
   };
@@ -85,6 +107,7 @@ async function commit(s) {
 function finish(s, message) {
   if (s.closed) return;
   s.closed = true;
+  clearTimeout(s.storyClock);
   s.peer?.close();
   s.result = message;
   clearTimeout(s.deadline);
@@ -123,7 +146,7 @@ export function flushOnExit() {
   const s = call;
   if (!s) return;
   if (s.id && s.queue.length)
-    fetch("/api/voice/captions", {
+    fetch(s.story ? "/api/story/voice/captions" : "/api/voice/captions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ runId: s.id, fragments: nextBatch(s) }),
@@ -138,10 +161,11 @@ export async function playVoice() {
     notify();
   }
 }
-export async function openVoice(venture = "") {
+export async function openVoice(venture = "", story = false) {
   if (call) return;
   const s = {
     venture,
+    story,
     id: null,
     abort: new AbortController(),
     queue: [],
@@ -155,7 +179,7 @@ export async function openVoice(venture = "") {
   };
   s.closedPromise = new Promise((resolve) => (s.resolveClosed = resolve));
   call = s;
-  if (!venture) s.peer = peerLookup(s, notify);
+  if (!venture && !story) s.peer = peerLookup(s, notify);
   notify();
   try {
     if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection)
@@ -196,6 +220,8 @@ export async function openVoice(venture = "") {
       }
       if (event.type === "session.started") {
         s.ready = true;
+        if (story)
+          s.storyClock = setTimeout(() => endVoice().catch(() => {}), 120000);
         clearTimeout(s.deadline);
         status(s, "Listening");
         return;
@@ -257,12 +283,13 @@ export async function openVoice(venture = "") {
       });
     if (s.closed) return;
     const answer = await api(
-      "voice",
+      story ? "story/voice" : "voice",
       { venture, sdp: pc.localDescription.sdp },
       s.abort.signal,
     );
     if (s.closed) return;
     s.id = answer.runId;
+    s.mentorOffered = Boolean(answer.mentorReady);
     s.startedAt = performance.now();
     s.deadline = setTimeout(
       () => finish(s, "Voice did not connect. You can try again."),

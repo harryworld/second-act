@@ -1,3 +1,4 @@
+import { storyAvailable, storyRequest } from "../server/sophie-story.ts";
 import { chatGPTAccount } from "./account.ts";
 import type { D1Database, ExecutionContext } from "@cloudflare/workers-types";
 import assets from "site:assets";
@@ -56,8 +57,13 @@ async function input(request: Request) {
     throw new Problem(400, "Invalid request.");
   }
 }
-async function admit(db: D1Database, key: string, max: number) {
-  const bucket = Math.floor(Date.now() / 3600000);
+async function admit(
+  db: D1Database,
+  key: string,
+  max: number,
+  windowMs = 3600000,
+) {
+  const bucket = Math.floor(Date.now() / windowMs);
   const r = await db
     .prepare(
       "INSERT INTO host_limits(key,bucket,count) VALUES(?,?,1) ON CONFLICT(key) DO UPDATE SET bucket=excluded.bucket,count=CASE WHEN host_limits.bucket=excluded.bucket THEN host_limits.count+1 ELSE 1 END RETURNING count",
@@ -154,8 +160,45 @@ export default {
         );
       }
       const identity = chatGPTAccount(request.headers);
-      if (url.pathname === "/api/session" && request.method === "GET")
-        return json({ signedIn: !!identity });
+      if (url.pathname === "/api/session" && request.method === "GET") {
+        ctx.waitUntil(
+          env.DB.prepare(
+            "DELETE FROM sophie_sessions WHERE id IN (SELECT id FROM sophie_sessions WHERE expires_ms<=? LIMIT 10)",
+          )
+            .bind(Date.now())
+            .run()
+            .catch(() => {}),
+        );
+        return json({ signedIn: !!identity, storyAvailable: storyAvailable() });
+      }
+      if (url.pathname.startsWith("/api/story/")) {
+        if (request.method !== "GET" && request.method !== "POST")
+          throw new Problem(405, "Method not allowed.");
+        if (
+          request.method === "POST" &&
+          request.headers.get("origin") !== url.origin
+        )
+          throw new Problem(403, "Reopen the story and try again.");
+        const story = await storyRequest(
+          request,
+          request.method === "POST" ? await input(request) : {},
+          {
+            db: database(env.DB),
+            provider: createAI(() => env.OPENAI_API_KEY),
+            limit: async (key, max) => {
+              await admit(env.DB, key, max);
+              if (key === "story:live")
+                await admit(env.DB, "story:daily-live", 6, 86400000);
+              if (key === "story:text")
+                await admit(env.DB, "story:daily-text", 240, 86400000);
+            },
+            locked: (key, fn) => withLease(env.DB, key, fn),
+          },
+        );
+        const response = json(story.body);
+        if (story.cookie) response.headers.set("Set-Cookie", story.cookie);
+        return response;
+      }
       if (!identity)
         throw new Problem(
           401,

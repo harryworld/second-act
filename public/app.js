@@ -1,4 +1,11 @@
 import {
+  renderStory,
+  storyAction,
+  storyInput,
+  storySubmit,
+  storyLink,
+} from "./sophie.js";
+import {
   publicBar,
   publicHome,
   privateGate,
@@ -85,6 +92,7 @@ let s,
   peopleTab = "people",
   pending = null,
   chatError = "";
+let storyEnabled = false;
 const drafts = new Map();
 const profileName = () => memberName(s);
 const routeId = () => route[0] || "home";
@@ -309,12 +317,39 @@ async function render() {
   route = location.hash.slice(1).split("/").filter(Boolean);
   const page = routeId();
   const live = currentVoice();
-  if (live && (page !== "guide" || guideScope() !== live.venture))
+  if (
+    live &&
+    (live.story
+      ? page !== "sophie"
+      : page !== "guide" || guideScope() !== live.venture)
+  )
     endVoice().catch((e) => toast(e.message));
   if (id > 1 && route.join("/") !== previous) {
     document.body.classList.remove("nav-open");
     if (dlg().open) dlg().close();
     window.scrollTo(0, 0);
+  }
+  if (page === "sophie") {
+    document.body.classList.add("public-visitor");
+    $("#sidebar").innerHTML = "";
+    $("#bar").innerHTML =
+      '<a class="brand" href="#home"><img src="/mark.svg" alt=""><strong>Second Act</strong></a>' +
+      button("story-exit", "Exit story", "log-out", "quiet");
+    document.title = "Second Act · Sophie’s story";
+    $("#main").innerHTML =
+      '<div id="story-content"><p>Opening Sophie’s story…</p></div>';
+    try {
+      await renderStory();
+    } catch (e) {
+      if (id === epoch)
+        $("#main").innerHTML = empty(
+          "book-open",
+          "Story unavailable",
+          e.message,
+          '<a class="secondary" href="#home">Back to the studio</a>',
+        );
+    }
+    return;
   }
   document.body.classList.toggle("public-visitor", Boolean(s.visitor));
   if (s.visitor) {
@@ -325,7 +360,7 @@ async function render() {
       "Second Act · " + (page === "home" ? "Founder studio" : title);
     $("#main").innerHTML =
       page === "home" || page === "starter"
-        ? publicHome()
+        ? publicHome(storyEnabled)
         : page === "learn"
           ? library()
           : privateGate(route.join("/"), title);
@@ -369,6 +404,8 @@ async function render() {
       profile: () => profilePage(s),
     };
     $("#main").innerHTML = (views[page] || home)();
+    if (page === "home" && storyEnabled)
+      $("#main .page-head")?.insertAdjacentHTML("beforeend", storyLink());
     if (page === "guide") drawVoice();
     if (page === "profile") updateBrief();
     if (
@@ -471,6 +508,7 @@ voiceEvents.addEventListener("change", () => {
     });
 });
 voiceEvents.addEventListener("finished", ({ detail: v }) => {
+  if (v.story) return;
   const messages = !v.venture
     ? s.messages
     : detail?.venture.id === v.venture
@@ -549,6 +587,7 @@ function acct(mode) {
 }
 async function click(id, el) {
   const [act, key] = id.split(":");
+  if (act.startsWith("story-")) return storyAction(act);
   const v = detail?.venture;
   switch (act) {
     case "menu":
@@ -1056,6 +1095,7 @@ async function click(id, el) {
   }
 }
 async function submit(type, f) {
+  if (type.startsWith("story-")) return storySubmit(type, f);
   const fd = new FormData(f),
     b = Object.fromEntries(fd),
     v = detail?.venture;
@@ -1271,6 +1311,7 @@ document.addEventListener("submit", async (e) => {
   }
 });
 document.addEventListener("input", (e) => {
+  storyInput(e.target);
   if (e.target.id === "message") drafts.set(guideScope(), e.target.value);
   if (e.target.id === "people-search") {
     search = e.target.value;
@@ -1374,6 +1415,7 @@ document.body.classList.toggle(
 );
 try {
   const session = await api("session");
+  storyEnabled = Boolean(session.storyAvailable);
   s = session.signedIn ? await api("open", {}) : { visitor: true };
   await render();
 } catch (e) {

@@ -18,6 +18,10 @@ Use Node.js 24 or later for development. `npm start` opens a loopback entry poin
 6. Use **Pricing** to explore labor, materials, fees, overhead, and break-even volume. **Records** accepts reviewed cash entries, receipt attachments and CSV imports. Estimates and accepted records remain separate. Export CSV for accounting review.
 7. In **Public profile**, the owner approves a versioned export of customer information. Test customer questions against only that package, then use the link to OpenAI’s Business Hub setup. The application records local approval. External verification, claiming, publication and payments are outside this pilot.
 
+## Sophie’s temporary story
+
+Open `/#sophie` and choose **Enter as Sophie** for a fictional walkthrough available until November 18, 2026 at 20:00 in Taipei. Each browser gets a separate short-lived demo session. Sophie wants to open a pet care store. Her written and spoken guide can draw on Harry’s recorded experiences from five years running a flower shop. After three substantive exchanges, the guide offers a practice introduction to Harry. Drafts stay in the demo. Exiting deletes that visit’s transcript. The demo cookie never grants access to a real member workspace.
+
 ## Conversation memory
 
 Your private founder conversation stores both typed and spoken turns. **New conversation** starts a fresh thread and keeps earlier turns searchable in **Conversation history**. You can save a passage from either speaker as a reference or review it as a standing instruction.

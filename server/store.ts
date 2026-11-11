@@ -181,6 +181,15 @@ export async function recordVoice(
     throw new Problem(404, "This voice session is unavailable.");
   const scope = String(run.scope);
   if (scope.startsWith("venture:")) await venture(db, member, scope.slice(8));
+  return storeVoiceFragments(db, scope, runId, Number(run.started), fragments);
+}
+export async function storeVoiceFragments(
+  db: DB,
+  scope: string,
+  runId: string,
+  started: number,
+  fragments: any[],
+) {
   if (!Array.isArray(fragments) || !fragments.length || fragments.length > 64)
     throw new Problem(400, "Invalid caption batch.");
   const insert = db.prepare(
@@ -207,7 +216,7 @@ export async function recordVoice(
         scope,
         f.role,
         JSON.stringify(body),
-        new Date(Number(run.started) + start).toISOString(),
+        new Date(started + start).toISOString(),
       );
     }
     await db.exec("COMMIT");

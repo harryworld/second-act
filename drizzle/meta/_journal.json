@@ -29,6 +29,13 @@
       "when": 1794484800002,
       "tag": "0003_shared_experiences",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794484800003,
+      "tag": "0004_sophie_story",
+      "breakpoints": true
     }
   ]
 }
